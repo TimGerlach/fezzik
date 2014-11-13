@@ -82,7 +82,9 @@ var _ = Describe("Running Many Tasks", func() {
 				for i := 0; i < factor*numCells; i++ {
 					tasks = append(tasks, NewLightweightTask(fmt.Sprintf("%s-%d", guid, i), addr))
 				}
-				taskReporter = NewTaskReporter(fmt.Sprintf("Running %d Tasks Across %d Cells", len(tasks), numCells), numCells, tasks)
+				cells, err := client.Cells()
+				Ω(err).ShouldNot(HaveOccurred())
+				taskReporter = NewTaskReporter(fmt.Sprintf("Running %d Tasks Across %d Cells", len(tasks), numCells), cells, tasks)
 			})
 
 			AfterEach(func() {

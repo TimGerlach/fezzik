@@ -26,22 +26,27 @@ type TaskReporter struct {
 	lock *sync.Mutex
 }
 
-func NewTaskReporter(reportName string, numCells int, tasks []receptor.TaskCreateRequest) *TaskReporter {
+func NewTaskReporter(reportName string, cells []receptor.CellResponse, tasks []receptor.TaskCreateRequest) *TaskReporter {
 	guids := []string{}
 
 	for _, task := range tasks {
 		guids = append(guids, task.TaskGuid)
 	}
 
+	taskDistribution := map[string]int{}
+	for _, cell := range cells {
+		taskDistribution[cell.CellID] = 0
+	}
+
 	return &TaskReporter{
 		ReportTime:       time.Now(),
 		ReportName:       reportName,
-		NumCells:         numCells,
+		NumCells:         len(cells),
 		TaskGuids:        guids,
 		TimeToCreate:     map[string]time.Duration{},
 		TimeToComplete:   map[string]time.Duration{},
 		FailedTasks:      map[string]string{},
-		TaskDistribution: map[string]int{},
+		TaskDistribution: taskDistribution,
 
 		lock: &sync.Mutex{},
 	}

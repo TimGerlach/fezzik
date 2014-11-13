@@ -7,6 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf-experimental/veritas/say"
 
 	"testing"
 )
@@ -22,7 +23,7 @@ func init() {
 	flag.StringVar(&receptorUsername, "receptor-username", "", "receptor username")
 	flag.StringVar(&receptorUsername, "receptor-password", "", "receptor password")
 	flag.StringVar(&publiclyAccessibleIP, "publicly-accessible-ip", "192.168.220.1", "a publicly accessible IP for the host the test is running on (necssary to run a local server that containers can phone home to)")
-	flag.IntVar(&numCells, "num-cells", 10, "number of cells")
+	flag.IntVar(&numCells, "num-cells", 0, "number of cells")
 	flag.Parse()
 
 	if receptorAddress == "" {
@@ -39,4 +40,12 @@ var _ = BeforeSuite(func() {
 	client = receptor.NewClient(receptorAddress, receptorUsername, receptorPassword)
 	domain = "fezzik"
 	stack = "lucid64"
+
+	if numCells == 0 {
+		cells, err := client.Cells()
+		Ω(err).ShouldNot(HaveOccurred())
+		numCells = len(cells)
+	}
+
+	say.Println(0, say.Green("Running Fezzik scaled to %d Cells", numCells))
 })
