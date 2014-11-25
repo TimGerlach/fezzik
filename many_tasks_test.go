@@ -25,13 +25,9 @@ func NewLightweightTask(guid string, addr string) receptor.TaskCreateRequest {
 		TaskGuid: guid,
 		Domain:   domain,
 		Stack:    stack,
-		Actions: []models.ExecutorAction{
-			{
-				models.RunAction{
-					Path: "bash",
-					Args: []string{"-c", fmt.Sprintf("echo '%s' > /tmp/output", guid)},
-				},
-			},
+		Action: &models.RunAction{
+			Path: "bash",
+			Args: []string{"-c", fmt.Sprintf("echo '%s' > /tmp/output", guid)},
 		},
 		CompletionCallbackURL: fmt.Sprintf("http://%s/done", addr),
 		DiskMB:                64,
