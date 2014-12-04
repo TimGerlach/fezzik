@@ -63,7 +63,7 @@ func (r *TaskReporter) Completed(task receptor.TaskResponse) {
 	dt := time.Since(r.ReportTime)
 	r.lock.Lock()
 	r.TimeToComplete[task.TaskGuid] = dt
-	r.TaskDistribution[task.ExecutorID] += 1
+	r.TaskDistribution[task.CellID] += 1
 	if task.Failed {
 		r.FailedTasks[task.TaskGuid] = task.FailureReason
 	}

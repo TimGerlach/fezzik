@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-var receptorAddress, receptorUsername, receptorPassword, publiclyAccessibleIP string
+var receptorAddress, publiclyAccessibleIP string
 var numCells int
 
 var client receptor.Client
@@ -35,7 +35,7 @@ func TestFezzik(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	client = receptor.NewClient(receptorAddress, receptorUsername, receptorPassword)
+	client = receptor.NewClient(receptorAddress)
 	domain = "fezzik"
 	stack = "lucid64"
 

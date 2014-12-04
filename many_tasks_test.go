@@ -38,7 +38,7 @@ func NewLightweightTask(guid string, addr string) receptor.TaskCreateRequest {
 
 func TasksByDomainFetcher(domain string) func() ([]receptor.TaskResponse, error) {
 	return func() ([]receptor.TaskResponse, error) {
-		return client.GetAllTasksByDomain(domain)
+		return client.TasksByDomain(domain)
 	}
 }
 
