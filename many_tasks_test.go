@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"regexp"
+	"sync"
 	"sync/atomic"
 
 	"github.com/onsi/gomega/ghttp"
@@ -42,6 +43,17 @@ func TasksByDomainFetcher(domain string) func() ([]receptor.TaskResponse, error)
 	}
 }
 
+func safeWait(wg *sync.WaitGroup) chan struct{} {
+	c := make(chan struct{})
+
+	go func() {
+		wg.Wait()
+		close(c)
+	}()
+
+	return c
+}
+
 func NewGHTTPServer() (*ghttp.Server, string) {
 	server := ghttp.NewUnstartedServer()
 	l, err := net.Listen("tcp", "0.0.0.0:0")
@@ -61,6 +73,14 @@ var _ = Describe("Running Many Tasks", func() {
 	for _, factor := range []int{1, 5, 10, 20, 40} {
 		factor := factor
 
+		/*
+			Commentary:
+
+			Currently, this test shows a degradation in performance as `factor` increases.
+			On Bosh-Lite I've traced this down to degrading Garden performance when many containers are created concurrently.
+			This is unsuprising and is likely disk-io bound.  None of the degredation appears to be related to Diego's scheduling however.
+		*/
+
 		Context("when the tasks are lightweight (no downloads, no uploads)", func() {
 			var workPool *workpool.WorkPool
 			var tasks []receptor.TaskCreateRequest
@@ -78,9 +98,11 @@ var _ = Describe("Running Many Tasks", func() {
 				for i := 0; i < factor*numCells; i++ {
 					tasks = append(tasks, NewLightweightTask(fmt.Sprintf("%s-%d", guid, i), addr))
 				}
+
 				cells, err := client.Cells()
 				Ω(err).ShouldNot(HaveOccurred())
-				taskReporter = NewTaskReporter(fmt.Sprintf("Running %d Tasks Across %d Cells", len(tasks), numCells), cells, tasks)
+				reportName := fmt.Sprintf("Running %d Tasks Across %d Cells", len(tasks), numCells)
+				taskReporter = NewTaskReporter(reportName, len(tasks), cells)
 			})
 
 			AfterEach(func() {
@@ -103,16 +125,12 @@ var _ = Describe("Running Many Tasks", func() {
 					taskReporter.Completed(receivedTask)
 				})
 
-				allCreated := make(chan struct{})
-				creationCounter := int64(0)
+				wg := &sync.WaitGroup{}
+				wg.Add(len(tasks))
 				for _, task := range tasks {
 					task := task
 					workPool.Submit(func() {
-						defer func() {
-							if atomic.AddInt64(&creationCounter, 1) >= int64(len(tasks)) {
-								close(allCreated)
-							}
-						}()
+						defer wg.Done()
 						err := client.CreateTask(task)
 						if err != nil {
 							fmt.Println(err.Error())
@@ -122,7 +140,7 @@ var _ = Describe("Running Many Tasks", func() {
 					})
 				}
 
-				Eventually(allCreated, 240).Should(BeClosed())
+				Eventually(safeWait(wg), 240).Should(BeClosed())
 				Eventually(allCompleted, 240).Should(BeClosed())
 				Eventually(TasksByDomainFetcher(domain), 240).Should(BeEmpty())
 			})

@@ -17,7 +17,7 @@ type TaskReporter struct {
 	ReportTime       time.Time
 	ReportName       string
 	NumCells         int
-	TaskGuids        []string
+	NumRequested     int
 	TimeToCreate     map[string]time.Duration
 	TimeToComplete   map[string]time.Duration
 	FailedTasks      map[string]string
@@ -26,13 +26,7 @@ type TaskReporter struct {
 	lock *sync.Mutex
 }
 
-func NewTaskReporter(reportName string, cells []receptor.CellResponse, tasks []receptor.TaskCreateRequest) *TaskReporter {
-	guids := []string{}
-
-	for _, task := range tasks {
-		guids = append(guids, task.TaskGuid)
-	}
-
+func NewTaskReporter(reportName string, numRequested int, cells []receptor.CellResponse) *TaskReporter {
 	taskDistribution := map[string]int{}
 	for _, cell := range cells {
 		taskDistribution[cell.CellID] = 0
@@ -41,8 +35,8 @@ func NewTaskReporter(reportName string, cells []receptor.CellResponse, tasks []r
 	return &TaskReporter{
 		ReportTime:       time.Now(),
 		ReportName:       reportName,
+		NumRequested:     numRequested,
 		NumCells:         len(cells),
-		TaskGuids:        guids,
 		TimeToCreate:     map[string]time.Duration{},
 		TimeToComplete:   map[string]time.Duration{},
 		FailedTasks:      map[string]string{},
@@ -78,7 +72,7 @@ func (r *TaskReporter) EmitSummary() {
 	numCompleted := len(r.TimeToComplete)
 	numFailed := len(r.FailedTasks)
 	numSucceeded := numCompleted - numFailed
-	numRequested := len(r.TaskGuids)
+	numRequested := r.NumRequested
 	neverCompleted := numRequested - numCompleted
 	fractionSucceeded := float64(numSucceeded) / float64(numRequested)
 	fractionFailed := float64(numFailed) / float64(numRequested)
