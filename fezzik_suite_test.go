@@ -10,6 +10,7 @@ import (
 	"github.com/pivotal-cf-experimental/veritas/say"
 
 	"testing"
+	"time"
 )
 
 var receptorAddress, publiclyAccessibleIP string
@@ -44,6 +45,8 @@ var _ = BeforeSuite(func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		numCells = len(cells)
 	}
+
+	SetDefaultEventuallyPollingInterval(100 * time.Millisecond)
 
 	say.Println(0, say.Green("Running Fezzik scaled to %d Cells", numCells))
 })
