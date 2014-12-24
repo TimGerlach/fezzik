@@ -21,7 +21,7 @@ var domain, stack string
 
 func init() {
 	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
-	flag.StringVar(&publiclyAccessibleIP, "publicly-accessible-ip", "192.168.220.1", "a publicly accessible IP for the host the test is running on (necssary to run a local server that containers can phone home to)")
+	flag.StringVar(&publiclyAccessibleIP, "publicly-accessible-ip", "10.0.2.2", "a publicly accessible IP for the host the test is running on (necssary to run a local server that containers can phone home to)")
 	flag.IntVar(&numCells, "num-cells", 0, "number of cells")
 	flag.Parse()
 
