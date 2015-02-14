@@ -33,7 +33,13 @@ func NewLightweightTask(guid string, addr string) receptor.TaskCreateRequest {
 		CompletionCallbackURL: fmt.Sprintf("http://%s/done", addr),
 		DiskMB:                64,
 		MemoryMB:              64,
-		ResultFile:            "/tmp/output",
+		EgressRules: []models.SecurityGroupRule{
+			{
+				Protocol:     models.AllProtocol,
+				Destinations: []string{"0.0.0.0/0"},
+			},
+		},
+		ResultFile: "/tmp/output",
 	}
 }
 
