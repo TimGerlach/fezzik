@@ -30,7 +30,7 @@ func NewLightweightLRP(guid string, numInstances int) receptor.DesiredLRPCreateR
 			Path: "nc",
 			Args: []string{"-z", "127.0.0.1", "8080"},
 		},
-		Ports:    []uint32{8080},
+		Ports:    []uint16{8080},
 		DiskMB:   128,
 		MemoryMB: 64,
 	}
