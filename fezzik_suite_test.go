@@ -3,6 +3,7 @@ package fezzik_test
 import (
 	"flag"
 	"log"
+	"runtime"
 
 	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/ginkgo"
@@ -36,6 +37,8 @@ func TestFezzik(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	client = receptor.NewClient(receptorAddress)
 	domain = "fezzik"
 	stack = "lucid64"
