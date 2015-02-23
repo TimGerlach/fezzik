@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/GaryBoone/GoStats/stats"
-	"github.com/pivotal-cf-experimental/veritas/say"
+	"github.com/onsi/say"
 )
 
 func PrintStatsReport(description string, s *stats.Stats) {

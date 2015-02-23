@@ -11,7 +11,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cf-experimental/veritas/say"
+	"github.com/onsi/say"
 )
 
 type LRPReporter struct {
