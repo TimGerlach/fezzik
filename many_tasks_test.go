@@ -94,14 +94,15 @@ var _ = Describe("Running Many Tasks", func() {
 			var server *ghttp.Server
 
 			BeforeEach(func() {
+				numTasks := factor * numCells
 				var addr string
 
-				workPool = workpool.NewWorkPool(500)
+				workPool = workpool.NewWorkPool(numTasks)
 				server, addr = NewGHTTPServer()
 
 				tasks = []receptor.TaskCreateRequest{}
 				guid := NewGuid()
-				for i := 0; i < factor*numCells; i++ {
+				for i := 0; i < numTasks; i++ {
 					tasks = append(tasks, NewLightweightTask(fmt.Sprintf("%s-%d", guid, i), addr))
 				}
 
