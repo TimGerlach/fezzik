@@ -18,7 +18,7 @@ var receptorAddress, publiclyAccessibleIP string
 var numCells int
 
 var client receptor.Client
-var domain, stack string
+var domain, rootFS string
 
 func init() {
 	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
@@ -41,7 +41,7 @@ var _ = BeforeSuite(func() {
 
 	client = receptor.NewClient(receptorAddress)
 	domain = "fezzik"
-	stack = "lucid64"
+	rootFS = "preloaded:cflinuxfs2"
 
 	if numCells == 0 {
 		cells, err := client.Cells()

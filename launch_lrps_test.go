@@ -16,7 +16,7 @@ func NewLightweightLRP(guid string, numInstances int) receptor.DesiredLRPCreateR
 	return receptor.DesiredLRPCreateRequest{
 		ProcessGuid: guid,
 		Domain:      domain,
-		Stack:       stack,
+		RootFS:      rootFS,
 		Instances:   numInstances,
 		Setup: &models.DownloadAction{
 			From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",

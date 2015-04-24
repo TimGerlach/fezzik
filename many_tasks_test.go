@@ -25,7 +25,7 @@ func NewLightweightTask(guid string, addr string) receptor.TaskCreateRequest {
 	return receptor.TaskCreateRequest{
 		TaskGuid: guid,
 		Domain:   domain,
-		Stack:    stack,
+		RootFS:   rootFS,
 		Action: &models.RunAction{
 			Path: "bash",
 			Args: []string{"-c", fmt.Sprintf("echo '%s' > /tmp/output", guid)},
