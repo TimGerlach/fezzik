@@ -2,9 +2,11 @@ package fezzik_test
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"runtime"
 
+	"github.com/cloudfoundry-incubator/fezzik"
 	"github.com/cloudfoundry-incubator/receptor"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -18,7 +20,8 @@ var receptorAddress, publiclyAccessibleIP string
 var numCells int
 
 var client receptor.Client
-var domain, rootFS string
+var domain, rootFS, guid string
+var startTime time.Time
 
 func init() {
 	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
@@ -52,4 +55,25 @@ var _ = BeforeSuite(func() {
 	SetDefaultEventuallyPollingInterval(100 * time.Millisecond)
 
 	say.Println(0, say.Green("Running Fezzik scaled to %d Cells", numCells))
+})
+
+var _ = BeforeEach(func() {
+	startTime = time.Now()
+	guid = fezzik.NewGuid(fmt.Sprintf("%s-%d", domain, GinkgoParallelNode()))
+})
+
+var _ = AfterEach(func() {
+	endTime := time.Now()
+	fmt.Fprint(
+		GinkgoWriter,
+		say.Cyan(
+			"\n%s\nThis test referenced GUID %s\nStart time: %s (%d)\nEnd time: %s (%d)\n",
+			CurrentGinkgoTestDescription().FullTestText,
+			guid,
+			startTime,
+			startTime.Unix(),
+			endTime,
+			endTime.Unix(),
+		),
+	)
 })

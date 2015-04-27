@@ -6,8 +6,8 @@ import (
 	"github.com/nu7hatch/gouuid"
 )
 
-func NewGuid() string {
+func NewGuid(prefix string) string {
 	u, err := uuid.NewV4()
 	Ω(err).ShouldNot(HaveOccurred())
-	return u.String()
+	return prefix + "-" + u.String()
 }

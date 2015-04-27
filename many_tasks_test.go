@@ -101,7 +101,6 @@ var _ = Describe("Running Many Tasks", func() {
 				server, addr = NewGHTTPServer()
 
 				tasks = []receptor.TaskCreateRequest{}
-				guid := NewGuid()
 				for i := 0; i < numTasks; i++ {
 					tasks = append(tasks, NewLightweightTask(fmt.Sprintf("%s-%d", guid, i), addr))
 				}

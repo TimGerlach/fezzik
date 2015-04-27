@@ -54,13 +54,13 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 			BeforeEach(func() {
 				numInstances = factor * numCells
 
-				guid := NewGuid()
 				desiredLRP = NewLightweightLRP(guid, numInstances)
-
-				reportName := fmt.Sprintf("Running %d Instances Across %d Cells", numInstances, numCells)
 				Ω(client.CreateDesiredLRP(desiredLRP)).Should(Succeed())
+
 				cells, err := client.Cells()
 				Ω(err).ShouldNot(HaveOccurred())
+
+				reportName := fmt.Sprintf("Running %d Instances Across %d Cells", numInstances, numCells)
 				lrpReporter = NewLRPReporter(reportName, numInstances, cells)
 			})
 
