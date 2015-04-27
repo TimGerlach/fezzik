@@ -65,12 +65,13 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 			})
 
 			AfterEach(func() {
+				lrpReporter.EmitSummary()
+				lrpReporter.Save()
+
 				t := time.Now()
 				client.DeleteDesiredLRP(desiredLRP.ProcessGuid)
 				Eventually(ActualLRPFetcher(desiredLRP.ProcessGuid), 240).Should(BeEmpty())
-				lrpReporter.EmitSummary()
 				fmt.Printf("Time to delete:%s\n", time.Since(t))
-				lrpReporter.Save()
 			})
 
 			It(fmt.Sprintf("should handle numCellx%d LRP instances", factor), func() {
