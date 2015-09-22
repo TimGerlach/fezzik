@@ -4,41 +4,40 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	. "github.com/cloudfoundry-incubator/fezzik"
-	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func NewLightweightLRP(guid string, numInstances int) receptor.DesiredLRPCreateRequest {
-	return receptor.DesiredLRPCreateRequest{
+func NewLightweightLRP(guid string, numInstances int32) *models.DesiredLRP {
+	return &models.DesiredLRP{
 		ProcessGuid: guid,
 		Domain:      domain,
-		RootFS:      rootFS,
+		RootFs:      rootFS,
 		Instances:   numInstances,
-		Setup: &models.DownloadAction{
+		Setup: models.WrapAction(&models.DownloadAction{
 			From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
 			To:       "/tmp",
 			CacheKey: "grace",
-		},
-		Action: &models.RunAction{
+		}),
+		Action: models.WrapAction(&models.RunAction{
 			Path: "/tmp/grace",
-		},
-		Monitor: &models.RunAction{
+		}),
+		Monitor: models.WrapAction(&models.RunAction{
 			Path: "nc",
 			Args: []string{"-z", "127.0.0.1", "8080"},
-		},
-		Ports:    []uint16{8080},
-		DiskMB:   128,
-		MemoryMB: 64,
+		}),
+		Ports:    []uint32{8080},
+		DiskMb:   128,
+		MemoryMb: 64,
 	}
 }
 
-func ActualLRPFetcher(processGuid string) func() ([]receptor.ActualLRPResponse, error) {
-	return func() ([]receptor.ActualLRPResponse, error) {
-		return client.ActualLRPsByProcessGuid(processGuid)
+func ActualLRPFetcher(processGuid string) func() ([]*models.ActualLRPGroup, error) {
+	return func() ([]*models.ActualLRPGroup, error) {
+		return bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
 	}
 }
 
@@ -47,21 +46,21 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 		factor := factor
 
 		Context(fmt.Sprintf("Starting up numCellx%d instances", factor), func() {
-			var desiredLRP receptor.DesiredLRPCreateRequest
+			var desiredLRP *models.DesiredLRP
 			var lrpReporter *LRPReporter
-			var numInstances int
+			var numInstances int32
 
 			BeforeEach(func() {
-				numInstances = factor * numCells
+				numInstances = int32(factor * numCells)
 
 				desiredLRP = NewLightweightLRP(guid, numInstances)
-				Ω(client.CreateDesiredLRP(desiredLRP)).Should(Succeed())
+				Expect(bbsClient.DesireLRP(desiredLRP)).To(Succeed())
 
-				cells, err := client.Cells()
-				Ω(err).ShouldNot(HaveOccurred())
+				cells, err := locketClient.Cells()
+				Expect(err).NotTo(HaveOccurred())
 
 				reportName := fmt.Sprintf("Running %d Instances Across %d Cells", numInstances, numCells)
-				lrpReporter = NewLRPReporter(reportName, numInstances, cells)
+				lrpReporter = NewLRPReporter(reportName, int(numInstances), cells)
 			})
 
 			AfterEach(func() {
@@ -69,7 +68,7 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 				lrpReporter.Save()
 
 				t := time.Now()
-				client.DeleteDesiredLRP(desiredLRP.ProcessGuid)
+				bbsClient.RemoveDesiredLRP((desiredLRP.ProcessGuid))
 				Eventually(ActualLRPFetcher(desiredLRP.ProcessGuid), 240).Should(BeEmpty())
 				fmt.Printf("Time to delete:%s\n", time.Since(t))
 			})
@@ -77,9 +76,9 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 			It(fmt.Sprintf("should handle numCellx%d LRP instances", factor), func() {
 				t := time.Now()
 				for {
-					Ω(time.Since(t)).Should(BeNumerically("<", 5*time.Minute), "timed out waiting for everything to come up!")
-					actuals, err := client.ActualLRPsByProcessGuid(desiredLRP.ProcessGuid)
-					Ω(err).ShouldNot(HaveOccurred())
+					Expect(time.Since(t)).To(BeNumerically("<", 5*time.Minute), "timed out waiting for everything to come up!")
+					actuals, err := bbsClient.ActualLRPGroupsByProcessGuid(desiredLRP.ProcessGuid)
+					Expect(err).NotTo(HaveOccurred())
 					done := lrpReporter.ProcessActuals(actuals)
 					if done {
 						return

@@ -8,6 +8,6 @@ import (
 
 func NewGuid(prefix string) string {
 	u, err := uuid.NewV4()
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	return prefix + "-" + u.String()
 }

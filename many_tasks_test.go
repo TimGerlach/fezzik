@@ -13,39 +13,40 @@ import (
 
 	"github.com/cloudfoundry/gunk/workpool"
 
+	"github.com/cloudfoundry-incubator/bbs/models"
 	. "github.com/cloudfoundry-incubator/fezzik"
-	"github.com/cloudfoundry-incubator/receptor"
-	"github.com/cloudfoundry-incubator/runtime-schema/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-func NewLightweightTask(guid string, addr string) receptor.TaskCreateRequest {
-	return receptor.TaskCreateRequest{
+func NewLightweightTask(guid string, addr string) *models.Task {
+	return &models.Task{
 		TaskGuid: guid,
 		Domain:   domain,
-		RootFS:   rootFS,
-		Action: &models.RunAction{
-			Path: "bash",
-			Args: []string{"-c", fmt.Sprintf("echo '%s' > /tmp/output", guid)},
-		},
-		CompletionCallbackURL: fmt.Sprintf("http://%s/done", addr),
-		DiskMB:                64,
-		MemoryMB:              64,
-		EgressRules: []models.SecurityGroupRule{
-			{
-				Protocol:     models.AllProtocol,
-				Destinations: []string{"0.0.0.0/0"},
+		TaskDefinition: &models.TaskDefinition{
+			RootFs: rootFS,
+			Action: models.WrapAction(&models.RunAction{
+				Path: "bash",
+				Args: []string{"-c", fmt.Sprintf("echo '%s' > /tmp/output", guid)},
+			}),
+			CompletionCallbackUrl: fmt.Sprintf("http://%s/done", addr),
+			DiskMb:                64,
+			MemoryMb:              64,
+			EgressRules: []*models.SecurityGroupRule{
+				{
+					Protocol:     models.AllProtocol,
+					Destinations: []string{"0.0.0.0/0"},
+				},
 			},
+			ResultFile: "/tmp/output",
 		},
-		ResultFile: "/tmp/output",
 	}
 }
 
-func TasksByDomainFetcher(domain string) func() ([]receptor.TaskResponse, error) {
-	return func() ([]receptor.TaskResponse, error) {
-		return client.TasksByDomain(domain)
+func TasksByDomainFetcher(domain string) func() ([]*models.Task, error) {
+	return func() ([]*models.Task, error) {
+		return bbsClient.TasksByDomain(domain)
 	}
 }
 
@@ -63,13 +64,13 @@ func safeWait(wg *sync.WaitGroup) chan struct{} {
 func NewGHTTPServer() (*ghttp.Server, string) {
 	server := ghttp.NewUnstartedServer()
 	l, err := net.Listen("tcp", "0.0.0.0:0")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 	server.HTTPTestServer.Listener = l
 	server.HTTPTestServer.Start()
 
 	re := regexp.MustCompile(`:(\d+)$`)
 	port := re.FindStringSubmatch(server.URL())[1]
-	Ω(port).ShouldNot(BeZero())
+	Expect(port).NotTo(BeZero())
 
 	//for bosh-lite only -- need something more sophisticated later.
 	return server, fmt.Sprintf("%s:%s", publiclyAccessibleIP, port)
@@ -89,7 +90,7 @@ var _ = Describe("Running Many Tasks", func() {
 
 		Context("when the tasks are lightweight (no downloads, no uploads)", func() {
 			var workPool *workpool.WorkPool
-			var tasks []receptor.TaskCreateRequest
+			var tasks []*models.Task
 			var taskReporter *TaskReporter
 			var server *ghttp.Server
 
@@ -97,16 +98,18 @@ var _ = Describe("Running Many Tasks", func() {
 				numTasks := factor * numCells
 				var addr string
 
-				workPool = workpool.NewWorkPool(numTasks)
+				var err error
+				workPool, err = workpool.NewWorkPool(numTasks)
+				Expect(err).NotTo(HaveOccurred())
 				server, addr = NewGHTTPServer()
 
-				tasks = []receptor.TaskCreateRequest{}
+				tasks = []*models.Task{}
 				for i := 0; i < numTasks; i++ {
 					tasks = append(tasks, NewLightweightTask(fmt.Sprintf("%s-%d", guid, i), addr))
 				}
 
-				cells, err := client.Cells()
-				Ω(err).ShouldNot(HaveOccurred())
+				cells, err := locketClient.Cells()
+				Expect(err).NotTo(HaveOccurred())
 				reportName := fmt.Sprintf("Running %d Tasks Across %d Cells", len(tasks), numCells)
 				taskReporter = NewTaskReporter(reportName, len(tasks), cells)
 			})
@@ -126,7 +129,7 @@ var _ = Describe("Running Many Tasks", func() {
 							close(allCompleted)
 						}
 					}()
-					var receivedTask receptor.TaskResponse
+					var receivedTask *models.Task
 					json.NewDecoder(req.Body).Decode(&receivedTask)
 					taskReporter.Completed(receivedTask)
 				})
@@ -137,7 +140,7 @@ var _ = Describe("Running Many Tasks", func() {
 					task := task
 					workPool.Submit(func() {
 						defer wg.Done()
-						err := client.CreateTask(task)
+						err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
 						if err != nil {
 							fmt.Println(err.Error())
 							return

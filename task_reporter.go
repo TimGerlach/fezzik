@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
 )
@@ -26,7 +27,7 @@ type TaskReporter struct {
 	lock *sync.Mutex
 }
 
-func NewTaskReporter(reportName string, numRequested int, cells []receptor.CellResponse) *TaskReporter {
+func NewTaskReporter(reportName string, numRequested int, cells []presence.CellPresence) *TaskReporter {
 	taskDistribution := map[string]int{}
 	for _, cell := range cells {
 		taskDistribution[cell.CellID] = 0
@@ -53,11 +54,11 @@ func (r *TaskReporter) DidCreate(guid string) {
 	r.lock.Unlock()
 }
 
-func (r *TaskReporter) Completed(task receptor.TaskResponse) {
+func (r *TaskReporter) Completed(task *models.Task) {
 	dt := time.Since(r.ReportTime)
 	r.lock.Lock()
 	r.TimeToComplete[task.TaskGuid] = dt
-	r.TaskDistribution[task.CellID] += 1
+	r.TaskDistribution[task.CellId] += 1
 	if task.Failed {
 		r.FailedTasks[task.TaskGuid] = task.FailureReason
 	}
@@ -110,11 +111,11 @@ func (r *TaskReporter) EmitSummary() {
 
 func (r *TaskReporter) Save() {
 	f, err := os.OpenFile("./reports.json", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	_, err = f.WriteString("TASK_REPORT\n")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
-	Ω(json.NewEncoder(f).Encode(r)).Should(Succeed())
-	Ω(f.Close()).Should(Succeed())
+	Expect(json.NewEncoder(f).Encode(r)).To(Succeed())
+	Expect(f.Close()).To(Succeed())
 }

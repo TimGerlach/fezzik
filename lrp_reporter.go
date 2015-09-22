@@ -9,7 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/bbs/models"
+	"github.com/cloudfoundry-incubator/locket/presence"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
 )
@@ -26,7 +27,7 @@ type LRPReporter struct {
 	lock *sync.Mutex
 }
 
-func NewLRPReporter(reportName string, numInstances int, cells []receptor.CellResponse) *LRPReporter {
+func NewLRPReporter(reportName string, numInstances int, cells []presence.CellPresence) *LRPReporter {
 	lrpDistribution := map[string]int{}
 	for _, cell := range cells {
 		lrpDistribution[cell.CellID] = 0
@@ -45,19 +46,20 @@ func NewLRPReporter(reportName string, numInstances int, cells []receptor.CellRe
 	}
 }
 
-func (r *LRPReporter) ProcessActuals(actuals []receptor.ActualLRPResponse) bool {
+func (r *LRPReporter) ProcessActuals(actuals []*models.ActualLRPGroup) bool {
 	dt := time.Since(r.ReportTime)
 	n := 0
 	r.lock.Lock()
-	for _, actual := range actuals {
+	for _, group := range actuals {
+		actual, _ := group.Resolve()
 		index := fmt.Sprintf("%d", actual.Index)
-		if actual.State == receptor.ActualLRPStateClaimed || actual.State == receptor.ActualLRPStateRunning {
+		if actual.State == models.ActualLRPStateClaimed || actual.State == models.ActualLRPStateRunning {
 			if _, ok := r.TimeToClaimed[index]; !ok {
 				r.TimeToClaimed[index] = dt
-				r.LRPDistribution[actual.CellID] += 1
+				r.LRPDistribution[actual.CellId] += 1
 			}
 		}
-		if actual.State == receptor.ActualLRPStateRunning {
+		if actual.State == models.ActualLRPStateRunning {
 			n += 1
 			if _, ok := r.TimeToRunning[index]; !ok {
 				r.TimeToRunning[index] = dt
@@ -94,11 +96,11 @@ func (r *LRPReporter) EmitSummary() {
 
 func (r *LRPReporter) Save() {
 	f, err := os.OpenFile("./reports.json", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666)
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
 	_, err = f.WriteString("LRP_REPORT\n")
-	Ω(err).ShouldNot(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred())
 
-	Ω(json.NewEncoder(f).Encode(r)).Should(Succeed())
-	Ω(f.Close()).Should(Succeed())
+	Expect(json.NewEncoder(f).Encode(r)).To(Succeed())
+	Expect(f.Close()).To(Succeed())
 }

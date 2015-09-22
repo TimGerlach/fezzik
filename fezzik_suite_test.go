@@ -3,35 +3,46 @@ package fezzik_test
 import (
 	"flag"
 	"fmt"
-	"log"
+	"net/url"
 	"runtime"
 
+	"github.com/cloudfoundry-incubator/bbs"
+	"github.com/cloudfoundry-incubator/consuladapter"
 	"github.com/cloudfoundry-incubator/fezzik"
-	"github.com/cloudfoundry-incubator/receptor"
+	"github.com/cloudfoundry-incubator/locket"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
+	"github.com/pivotal-golang/clock"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	"testing"
 	"time"
 )
 
-var receptorAddress, publiclyAccessibleIP string
+var bbsAddress string
+var bbsCA string
+var bbsClientCert string
+var bbsClientKey string
+var consulAddress string
+
+var publiclyAccessibleIP string
 var numCells int
 
-var client receptor.Client
+var bbsClient bbs.Client
+var locketClient locket.Client
 var domain, rootFS, guid string
 var startTime time.Time
 
 func init() {
-	flag.StringVar(&receptorAddress, "receptor-address", "http://receptor.10.244.0.34.xip.io", "http address for the receptor (required)")
+	flag.StringVar(&bbsAddress, "bbs-address", "http://10.244.16.130:8889", "http address for the bbs (required)")
+	flag.StringVar(&bbsCA, "bbs-ca", "", "bbs ca cert")
+	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
+	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
+	flag.StringVar(&consulAddress, "consul-address", "http://127.0.0.1:8500", "http address for the consul agent (required)")
 	flag.StringVar(&publiclyAccessibleIP, "publicly-accessible-ip", "10.0.2.2", "a publicly accessible IP for the host the test is running on (necssary to run a local server that containers can phone home to)")
 	flag.IntVar(&numCells, "num-cells", 0, "number of cells")
 	flag.Parse()
-
-	if receptorAddress == "" {
-		log.Fatal("i need a receptor-address to talk to Diego...")
-	}
 }
 
 func TestFezzik(t *testing.T) {
@@ -42,13 +53,26 @@ func TestFezzik(t *testing.T) {
 var _ = BeforeSuite(func() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	client = receptor.NewClient(receptorAddress)
+	var err error
+	bbsClient = initializeBBSClient()
+
+	consulClient, err := consuladapter.NewClient(consulAddress)
+	Expect(err).NotTo(HaveOccurred())
+
+	sessionMgr := consuladapter.NewSessionManager(consulClient)
+	consulSession, err := consuladapter.NewSession("fezzik", 10*time.Second, consulClient, sessionMgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	logger := lagertest.NewTestLogger("fezzik")
+
+	locketClient = locket.NewClient(consulSession, clock.NewClock(), logger)
+
 	domain = "fezzik"
 	rootFS = "preloaded:cflinuxfs2"
 
 	if numCells == 0 {
-		cells, err := client.Cells()
-		Ω(err).ShouldNot(HaveOccurred())
+		cells, err := locketClient.Cells()
+		Expect(err).NotTo(HaveOccurred())
 		numCells = len(cells)
 	}
 
@@ -77,3 +101,16 @@ var _ = AfterEach(func() {
 		),
 	)
 })
+
+func initializeBBSClient() bbs.Client {
+	bbsURL, err := url.Parse(bbsAddress)
+	Expect(err).NotTo(HaveOccurred())
+
+	if bbsURL.Scheme != "https" {
+		return bbs.NewClient(bbsAddress)
+	}
+
+	bbsClient, err := bbs.NewSecureClient(bbsAddress, bbsCA, bbsClientCert, bbsClientKey)
+	Expect(err).NotTo(HaveOccurred())
+	return bbsClient
+}
