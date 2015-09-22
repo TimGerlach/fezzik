@@ -29,6 +29,7 @@ func NewLightweightTask(guid string, addr string) *models.Task {
 			Action: models.WrapAction(&models.RunAction{
 				Path: "bash",
 				Args: []string{"-c", fmt.Sprintf("echo '%s' > /tmp/output", guid)},
+				User: "vcap",
 			}),
 			CompletionCallbackUrl: fmt.Sprintf("http://%s/done", addr),
 			DiskMb:                64,

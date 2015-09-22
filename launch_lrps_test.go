@@ -21,13 +21,16 @@ func NewLightweightLRP(guid string, numInstances int32) *models.DesiredLRP {
 			From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
 			To:       "/tmp",
 			CacheKey: "grace",
+			User:     "vcap",
 		}),
 		Action: models.WrapAction(&models.RunAction{
 			Path: "/tmp/grace",
+			User: "vcap",
 		}),
 		Monitor: models.WrapAction(&models.RunAction{
 			Path: "nc",
 			Args: []string{"-z", "127.0.0.1", "8080"},
+			User: "vcap",
 		}),
 		Ports:    []uint32{8080},
 		DiskMb:   128,
