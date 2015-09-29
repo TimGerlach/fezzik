@@ -110,7 +110,7 @@ func initializeBBSClient() bbs.Client {
 		return bbs.NewClient(bbsAddress)
 	}
 
-	bbsClient, err := bbs.NewSecureClient(bbsAddress, bbsCA, bbsClientCert, bbsClientKey)
+	bbsClient, err := bbs.NewSecureClient(bbsAddress, bbsCA, bbsClientCert, bbsClientKey, 0, 0)
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
 }
