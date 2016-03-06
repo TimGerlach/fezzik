@@ -17,19 +17,16 @@ func NewLightweightLRP(guid string, numInstances int32) *models.DesiredLRP {
 		Domain:      domain,
 		RootFs:      rootFS,
 		Instances:   numInstances,
-		Setup: models.WrapAction(&models.DownloadAction{
-			From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-			To:       "/tmp",
-			CacheKey: "grace",
-			User:     "vcap",
+		Setup: models.WrapAction(&models.RunAction{
+			Path: `{"duration_in_seconds":0}`,
+			User: "vcap",
 		}),
 		Action: models.WrapAction(&models.RunAction{
-			Path: "/tmp/grace",
+			Path: `{"duration_in_seconds":1000}`,
 			User: "vcap",
 		}),
 		Monitor: models.WrapAction(&models.RunAction{
-			Path: "nc",
-			Args: []string{"-z", "127.0.0.1", "8080"},
+			Path: `{"duration_in_seconds":0}`,
 			User: "vcap",
 		}),
 		Ports:    []uint32{8080},
@@ -57,6 +54,7 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 				numInstances = int32(factor * numCells)
 
 				desiredLRP = NewLightweightLRP(guid, numInstances)
+				By("Desiring DesiredLRP")
 				Expect(bbsClient.DesireLRP(desiredLRP)).To(Succeed())
 
 				cells, err := locketClient.Cells()
@@ -71,6 +69,7 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 				lrpReporter.Save()
 
 				t := time.Now()
+				By("Removing DesiredLRP")
 				bbsClient.RemoveDesiredLRP((desiredLRP.ProcessGuid))
 				Eventually(ActualLRPFetcher(desiredLRP.ProcessGuid), 240).Should(BeEmpty())
 				fmt.Printf("Time to delete:%s\n", time.Since(t))
