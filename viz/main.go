@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/fezzik"
+	"code.cloudfoundry.org/fezzik"
 )
 
 func main() {

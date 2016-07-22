@@ -11,10 +11,8 @@ import (
 
 	"github.com/onsi/gomega/ghttp"
 
-	"github.com/cloudfoundry/gunk/workpool"
-
-	"github.com/cloudfoundry-incubator/bbs/models"
-	. "github.com/cloudfoundry-incubator/fezzik"
+	"code.cloudfoundry.org/bbs/models"
+	. "code.cloudfoundry.org/fezzik"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

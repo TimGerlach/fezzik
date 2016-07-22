@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cloudfoundry-incubator/bbs/models"
-	"github.com/cloudfoundry-incubator/locket/presence"
+	"code.cloudfoundry.org/bbs/models"
+	"code.cloudfoundry.org/locket"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
 )
@@ -27,7 +27,7 @@ type LRPReporter struct {
 	lock *sync.Mutex
 }
 
-func NewLRPReporter(reportName string, numInstances int, cells []presence.CellPresence) *LRPReporter {
+func NewLRPReporter(reportName string, numInstances int, cells []locket.Presence) *LRPReporter {
 	lrpDistribution := map[string]int{}
 	for _, cell := range cells {
 		lrpDistribution[cell.CellID] = 0
