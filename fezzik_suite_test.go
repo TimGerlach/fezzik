@@ -7,11 +7,9 @@ import (
 	"runtime"
 
 	"code.cloudfoundry.org/bbs"
-	"code.cloudfoundry.org/clock"
-	"code.cloudfoundry.org/consuladapter"
 	"code.cloudfoundry.org/fezzik"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/locket"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
@@ -30,7 +28,7 @@ var publiclyAccessibleIP string
 var numCells int
 
 var bbsClient bbs.Client
-var locketClient locket.Client
+var logger lager.Logger
 var domain, rootFS, guid string
 var startTime time.Time
 
@@ -53,25 +51,14 @@ func TestFezzik(t *testing.T) {
 var _ = BeforeSuite(func() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	var err error
 	bbsClient = initializeBBSClient()
 
-	consulClient, err := consuladapter.NewClient(consulAddress)
-	Expect(err).NotTo(HaveOccurred())
-
-	sessionMgr := consuladapter.NewSessionManager(consulClient)
-	consulSession, err := consuladapter.NewSession("fezzik", 10*time.Second, consulClient, sessionMgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	logger := lagertest.NewTestLogger("fezzik")
-
-	locketClient = locket.NewClient(consulSession, clock.NewClock(), logger)
-
+	logger = lagertest.NewTestLogger("fezzik")
 	domain = "fezzik"
 	rootFS = "preloaded:cflinuxfs2"
 
 	if numCells == 0 {
-		cells, err := locketClient.Cells()
+		cells, err := bbsClient.Cells(logger)
 		Expect(err).NotTo(HaveOccurred())
 		numCells = len(cells)
 	}

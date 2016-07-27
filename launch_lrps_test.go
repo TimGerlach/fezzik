@@ -6,6 +6,7 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	. "code.cloudfoundry.org/fezzik"
+	"code.cloudfoundry.org/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -38,9 +39,9 @@ func NewLightweightLRP(guid string, numInstances int32) *models.DesiredLRP {
 	}
 }
 
-func ActualLRPFetcher(processGuid string) func() ([]*models.ActualLRPGroup, error) {
+func ActualLRPFetcher(logger lager.Logger, processGuid string) func() ([]*models.ActualLRPGroup, error) {
 	return func() ([]*models.ActualLRPGroup, error) {
-		return bbsClient.ActualLRPGroupsByProcessGuid(processGuid)
+		return bbsClient.ActualLRPGroupsByProcessGuid(logger, processGuid)
 	}
 }
 
@@ -57,9 +58,9 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 				numInstances = int32(factor * numCells)
 
 				desiredLRP = NewLightweightLRP(guid, numInstances)
-				Expect(bbsClient.DesireLRP(desiredLRP)).To(Succeed())
+				Expect(bbsClient.DesireLRP(logger, desiredLRP)).To(Succeed())
 
-				cells, err := locketClient.Cells()
+				cells, err := bbsClient.Cells(logger)
 				Expect(err).NotTo(HaveOccurred())
 
 				reportName := fmt.Sprintf("Running %d Instances Across %d Cells", numInstances, numCells)
@@ -71,8 +72,8 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 				lrpReporter.Save()
 
 				t := time.Now()
-				bbsClient.RemoveDesiredLRP((desiredLRP.ProcessGuid))
-				Eventually(ActualLRPFetcher(desiredLRP.ProcessGuid), 240).Should(BeEmpty())
+				bbsClient.RemoveDesiredLRP(logger, desiredLRP.ProcessGuid)
+				Eventually(ActualLRPFetcher(logger, desiredLRP.ProcessGuid), 240).Should(BeEmpty())
 				fmt.Printf("Time to delete:%s\n", time.Since(t))
 			})
 
@@ -80,7 +81,7 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 				t := time.Now()
 				for {
 					Expect(time.Since(t)).To(BeNumerically("<", 5*time.Minute), "timed out waiting for everything to come up!")
-					actuals, err := bbsClient.ActualLRPGroupsByProcessGuid(desiredLRP.ProcessGuid)
+					actuals, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, desiredLRP.ProcessGuid)
 					Expect(err).NotTo(HaveOccurred())
 					done := lrpReporter.ProcessActuals(actuals)
 					if done {

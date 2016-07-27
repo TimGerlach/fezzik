@@ -13,6 +13,8 @@ import (
 
 	"code.cloudfoundry.org/bbs/models"
 	. "code.cloudfoundry.org/fezzik"
+	"code.cloudfoundry.org/gunk/workpool"
+	"code.cloudfoundry.org/lager"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -43,9 +45,9 @@ func NewLightweightTask(guid string, addr string) *models.Task {
 	}
 }
 
-func TasksByDomainFetcher(domain string) func() ([]*models.Task, error) {
+func TasksByDomainFetcher(logger lager.Logger, domain string) func() ([]*models.Task, error) {
 	return func() ([]*models.Task, error) {
-		return bbsClient.TasksByDomain(domain)
+		return bbsClient.TasksByDomain(logger, domain)
 	}
 }
 
@@ -107,7 +109,7 @@ var _ = Describe("Running Many Tasks", func() {
 					tasks = append(tasks, NewLightweightTask(fmt.Sprintf("%s-%d", guid, i), addr))
 				}
 
-				cells, err := locketClient.Cells()
+				cells, err := bbsClient.Cells(logger)
 				Expect(err).NotTo(HaveOccurred())
 				reportName := fmt.Sprintf("Running %d Tasks Across %d Cells", len(tasks), numCells)
 				taskReporter = NewTaskReporter(reportName, len(tasks), cells)
@@ -139,7 +141,7 @@ var _ = Describe("Running Many Tasks", func() {
 					task := task
 					workPool.Submit(func() {
 						defer wg.Done()
-						err := bbsClient.DesireTask(task.TaskGuid, task.Domain, task.TaskDefinition)
+						err := bbsClient.DesireTask(logger, task.TaskGuid, task.Domain, task.TaskDefinition)
 						if err != nil {
 							fmt.Println(err.Error())
 							return
@@ -150,7 +152,7 @@ var _ = Describe("Running Many Tasks", func() {
 
 				Eventually(safeWait(wg), 240).Should(BeClosed())
 				Eventually(allCompleted, 240).Should(BeClosed())
-				Eventually(TasksByDomainFetcher(domain), 240).Should(BeEmpty())
+				Eventually(TasksByDomainFetcher(logger, domain), 240).Should(BeEmpty())
 			})
 		})
 	}

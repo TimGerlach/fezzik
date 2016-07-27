@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/bbs/models"
-	"code.cloudfoundry.org/locket"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
 )
@@ -27,10 +26,10 @@ type TaskReporter struct {
 	lock *sync.Mutex
 }
 
-func NewTaskReporter(reportName string, numRequested int, cells []locket.Presence) *TaskReporter {
+func NewTaskReporter(reportName string, numRequested int, cells []*models.CellPresence) *TaskReporter {
 	taskDistribution := map[string]int{}
 	for _, cell := range cells {
-		taskDistribution[cell.CellID] = 0
+		taskDistribution[cell.CellId] = 0
 	}
 
 	return &TaskReporter{
