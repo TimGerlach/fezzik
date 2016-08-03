@@ -46,7 +46,7 @@ func ActualLRPFetcher(logger lager.Logger, processGuid string) func() ([]*models
 }
 
 var _ = Describe("Starting up a DesiredLRP", func() {
-	for _, factor := range []int{1, 5, 10, 20, 40} {
+	for _, factor := range []int{1, 5, 10, 20, 40, 100, 200} {
 		factor := factor
 
 		Context(fmt.Sprintf("Starting up numCellx%d instances", factor), func() {
