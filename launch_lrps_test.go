@@ -14,18 +14,20 @@ import (
 
 func NewLightweightLRP(guid string, numInstances int32) *models.DesiredLRP {
 	return &models.DesiredLRP{
-		ProcessGuid: guid,
-		Domain:      domain,
-		RootFs:      rootFS,
-		Instances:   numInstances,
-		Setup: models.WrapAction(&models.DownloadAction{
-			From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
-			To:       "/tmp",
-			CacheKey: "grace",
-			User:     "vcap",
-		}),
+		ProcessGuid:        guid,
+		Domain:             domain,
+		RootFs:             rootFS,
+		Instances:          numInstances,
+		LegacyDownloadUser: "vcap",
+		CachedDependencies: []*models.CachedDependency{
+			{
+				From:     "http://onsi-public.s3.amazonaws.com/grace.tar.gz",
+				To:       "/home/vcap/grace",
+				CacheKey: "grace",
+			},
+		},
 		Action: models.WrapAction(&models.RunAction{
-			Path: "/tmp/grace",
+			Path: "/home/vcap/grace/grace",
 			User: "vcap",
 		}),
 		Monitor: models.WrapAction(&models.RunAction{
@@ -46,7 +48,7 @@ func ActualLRPFetcher(logger lager.Logger, processGuid string) func() ([]*models
 }
 
 var _ = Describe("Starting up a DesiredLRP", func() {
-	for _, factor := range []int{1, 5, 10, 20, 40, 100, 200} {
+	for _, factor := range []int{5, 200} {
 		factor := factor
 
 		Context(fmt.Sprintf("Starting up numCellx%d instances", factor), func() {
@@ -78,17 +80,11 @@ var _ = Describe("Starting up a DesiredLRP", func() {
 			})
 
 			It(fmt.Sprintf("should handle numCellx%d LRP instances", factor), func() {
-				t := time.Now()
-				for {
-					Expect(time.Since(t)).To(BeNumerically("<", 5*time.Minute), "timed out waiting for everything to come up!")
+				Eventually(func() bool {
 					actuals, err := bbsClient.ActualLRPGroupsByProcessGuid(logger, desiredLRP.ProcessGuid)
 					Expect(err).NotTo(HaveOccurred())
-					done := lrpReporter.ProcessActuals(actuals)
-					if done {
-						return
-					}
-					time.Sleep(200 * time.Millisecond)
-				}
+					return lrpReporter.ProcessActuals(actuals)
+				}, 30*time.Minute, 200*time.Millisecond).Should(BeTrue())
 			})
 		})
 	}

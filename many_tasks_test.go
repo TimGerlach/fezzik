@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/onsi/gomega/ghttp"
 
@@ -78,7 +79,7 @@ func NewGHTTPServer() (*ghttp.Server, string) {
 }
 
 var _ = Describe("Running Many Tasks", func() {
-	for _, factor := range []int{1, 5, 10, 20, 40} {
+	for _, factor := range []int{5, 200} {
 		factor := factor
 
 		/*
@@ -150,9 +151,9 @@ var _ = Describe("Running Many Tasks", func() {
 					})
 				}
 
-				Eventually(safeWait(wg), 240).Should(BeClosed())
-				Eventually(allCompleted, 240).Should(BeClosed())
-				Eventually(TasksByDomainFetcher(logger, domain), 240).Should(BeEmpty())
+				Eventually(safeWait(wg), 4*time.Minute).Should(BeClosed())
+				Eventually(allCompleted, 30*time.Minute).Should(BeClosed())
+				Eventually(TasksByDomainFetcher(logger, domain), 4*time.Minute).Should(BeEmpty())
 			})
 		})
 	}

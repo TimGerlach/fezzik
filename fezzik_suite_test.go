@@ -4,12 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"net/url"
+	"os"
 	"runtime"
 
 	"code.cloudfoundry.org/bbs"
 	"code.cloudfoundry.org/fezzik"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/say"
@@ -53,7 +53,9 @@ var _ = BeforeSuite(func() {
 
 	bbsClient = initializeBBSClient()
 
-	logger = lagertest.NewTestLogger("fezzik")
+	logger = lager.NewLogger("fezzik")
+	sink := lager.NewWriterSink(os.Stdout, lager.ERROR)
+	logger.RegisterSink(sink)
 	domain = "fezzik"
 	rootFS = "preloaded:cflinuxfs2"
 
