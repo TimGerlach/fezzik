@@ -22,6 +22,7 @@ var bbsAddress string
 var bbsCA string
 var bbsClientCert string
 var bbsClientKey string
+var skipVerifyCertificate bool
 var consulAddress string
 
 var publiclyAccessibleIP string
@@ -37,6 +38,7 @@ func init() {
 	flag.StringVar(&bbsCA, "bbs-ca", "", "bbs ca cert")
 	flag.StringVar(&bbsClientCert, "bbs-client-cert", "", "bbs client ssl certificate")
 	flag.StringVar(&bbsClientKey, "bbs-client-key", "", "bbs client ssl key")
+	flag.BoolVar(&skipVerifyCertificate, "bbs-skip-verify-certificate", false, "whether to ignore invalid TLS certificates")
 	flag.StringVar(&consulAddress, "consul-address", "http://127.0.0.1:8500", "http address for the consul agent (required)")
 	flag.StringVar(&publiclyAccessibleIP, "publicly-accessible-ip", "10.0.2.2", "a publicly accessible IP for the host the test is running on (necssary to run a local server that containers can phone home to)")
 	flag.IntVar(&numCells, "num-cells", 0, "number of cells")
@@ -99,7 +101,16 @@ func initializeBBSClient() bbs.Client {
 		return bbs.NewClient(bbsAddress)
 	}
 
-	bbsClient, err := bbs.NewSecureClient(bbsAddress, bbsCA, bbsClientCert, bbsClientKey, 0, 0)
+	bbsClient, err := getSecureClient(skipVerifyCertificate)
+
 	Expect(err).NotTo(HaveOccurred())
 	return bbsClient
+}
+
+func getSecureClient(skipVerify bool) (bbs.Client, error) {
+	if skipVerifyCertificate {
+		return bbs.NewSecureSkipVerifyClient(bbsAddress, bbsClientCert, bbsClientKey, 0, 0)
+	} else {
+		return bbs.NewSecureClient(bbsAddress, bbsCA, bbsClientCert, bbsClientKey, 0, 0)
+	}
 }
